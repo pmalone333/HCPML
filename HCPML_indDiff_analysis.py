@@ -108,4 +108,7 @@ sens_out = np.asarray(sens)
 np.save(os.path.join(mvpa_path,'cv_results',str(nsubs)+'subs_'+cv_type+'_CV_'+clf_type+'ftrWghts'),
         sens_out)
 
+#load behavioral data
+
+
 verbose(2, "total script computation time: %.1f minutes" % ((time.time() - script_start_time)/60))
