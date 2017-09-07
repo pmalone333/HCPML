@@ -139,6 +139,9 @@ for index, s in enumerate(subs_test):
     dp[index] = np.dot(sens_out,beta_map.transpose())
 
 
+np.save(os.path.join(mvpa_path,'cv_results',str(nsubs)+'subs_'+cv_type+'_CV_'+clf_type+'dp'),
+        sens_out)
+
 #load behavioral data
 subs    = [int(s) for s in subs_test] #convert str to int
 df2     = df.loc[df['Subject'].isin(subs_test)]

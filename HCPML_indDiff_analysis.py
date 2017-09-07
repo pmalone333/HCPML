@@ -5,6 +5,7 @@ import numpy as np
 import nibabel as nib
 import multiprocessing
 import pandas as pd
+import matplotlib.pyplot as plt
 
 #enable output to console
 verbose.level = 2
@@ -120,6 +121,6 @@ df    = pd.read_csv('HCP_behavioraldata.csv')
 subs  = [int(s) for s in subs_test] #convert str to int
 df2   = df.loc[df['Subject'].isin(subs_test)]
 bdata = df2.ListSort_AgeAdj
-bdata = bdata.reshape(30,1)
+bdata = bdata.reshape(300,1)
 
 verbose(2, "total script computation time: %.1f minutes" % ((time.time() - script_start_time)/60))
