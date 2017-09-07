@@ -67,7 +67,8 @@ fds = vstack(ds_all) #stack datasets
 
 #classifier algorithm
 if clf_type is 'SVM':
-    clf = LinearCSVMC()
+    clf = RbfCSVMC()
+    #clf = LinearCSVMC()
 elif clf_type is 'KNN':
     clf = kNN(k=knn_k, voting='weighted')
 #cross-validation algorithm

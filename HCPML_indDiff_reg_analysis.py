@@ -122,7 +122,7 @@ sens    = sensana(fds)
 
 #convert feature weights to numpy array and save
 sens_out = np.asarray(sens)
-np.save(os.path.join(mvpa_path,'cv_results',str(nsubs)+'subs_'+cv_type+'_CV_'+clf_type+'ftrWghts'),
+np.save(os.path.join(mvpa_path,'cv_results',str(nsubs)+'subs_'+cv_type+'_CV_'+clf_type+'reg_ftrWghts'),
         sens_out)
 
 
@@ -139,7 +139,7 @@ for index, s in enumerate(subs_test):
     dp[index] = np.dot(sens_out,beta_map.transpose())
 
 
-np.save(os.path.join(mvpa_path,'cv_results',str(nsubs)+'subs_'+cv_type+'_CV_'+clf_type+'dp'),
+np.save(os.path.join(mvpa_path,'cv_results',str(nsubs)+'subs_'+cv_type+'_CV_'+clf_type+'reg_dp'),
         dp)
 #np.load('/Volumes/maloneHD/Data/HCP_ML/WM/mvpa/2bkVs0bk/cv_results/700subs_nfld_CV_SVMclf_ftrWghts.npy')
 
