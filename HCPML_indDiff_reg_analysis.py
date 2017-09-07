@@ -1,10 +1,11 @@
 from mvpa2.suite import *
 import os
-import platform
 import numpy as np
 import nibabel as nib
 import multiprocessing
 import pandas as pd
+import matplotlib.pyplot as plt
+import scipy as sp
 
 #enable output to console
 verbose.level = 2
@@ -17,20 +18,17 @@ clf_name  = '2bkVs0bk' #lfvslh, multiclass (all 5 movements)
 
 data_path = os.path.join('/Volumes/maloneHD/Data/HCP_ML/', task)  # base directory (mac)
 beta_path = os.path.join('/Volumes/maloneHD/Data_noSync/HCP_ML/', task, 'betas/')  # beta images
-
 mvpa_path = os.path.join(data_path,'mvpa',clf_name)
 parc_path = os.path.join(data_path,'parc') #parcellations
 
 #analysis parameters
 nsubs    = 700 #number of subjects
 nparc    = 360 #number of parcels/ROIs
-clf_type = 'SVM' #KNN, SVM
+clf_type = 'SVM' #KNN, SVM, ridgeReg
 knn_k    = round(np.sqrt(nsubs)) #k-nearest-neighbor parameter
 cv_type  = 'nfld' #split_half, LOSO (leave-one-subject-out), nfld (n-fold)
 targets  = ['2BK','0BK']
-pe_num   = ['9','10']
-#targets  = ['lf','lh','rf','rh','t'] #targets to be classified
-#pe_num   = ['2','3','4','5','6'] #parameter estimate numbers corresponding to targets
+pe_num   = ['9']
 
 #define subjects and mask
 subs       = os.listdir(beta_path)
@@ -42,6 +40,15 @@ msk        = nib.load(msk_path)
 msk_data   = msk.get_data()
 msk_data   = msk_data[0, 0, 0, 0, 0, 0:]  #last dimension contains parcel data
 
+#load behavioral data
+df      = pd.read_csv('HCP_behavioraldata.csv')
+subs    = [int(s) for s in subs_train] #convert str to int
+df2     = df.loc[df['Subject'].isin(subs_train)]
+acc_0bk = df2.WM_Task_0bk_Acc
+acc_2bk = df2.WM_Task_2bk_Acc
+acc_2bk = acc_2bk.reshape(len(subs_train),1)
+acc_0bk = acc_0bk.reshape(len(subs_train),1)
+
 #load beta imgs
 ds_all = []
 for index, s in enumerate(subs_train):
@@ -51,24 +58,37 @@ for index, s in enumerate(subs_train):
                                  'GrayordinatesStats')
     pe_paths = []
     for p in pe_num:
-        pe_paths.append(os.path.join(tds_beta_path,
-                                     'cope'+p+'.feat','pe1.dtseries.nii'))
+        pe_path = os.path.join(tds_beta_path,
+                                     'cope'+p+'.feat','pe1.dtseries.nii')
 
-    #ds = fmri_dataset(pe_paths,targets=targets,mask=surf_mask)
-    ds = fmri_dataset(pe_paths, targets=targets)
+        #ds = fmri_dataset(pe_paths,targets=targets,mask=surf_mask)
+        if p=='9':
+            ds = fmri_dataset(pe_path, targets=acc_2bk[index])
+        # elif p=='10':
+        #     ds = fmri_dataset(pe_path, targets=acc_0bk[index])
 
-    ds.sa['subject'] = np.repeat(index, len(ds))
-    #ds.fa['parcel']  = msk_data
-    ds_all.append(ds)
-    verbose(2, "subject %i of %i loaded" % (index, nsubs))
+        ds.sa['subject'] = np.repeat(index, len(ds))
+        #ds.fa['parcel']  = msk_data
+        ds_all.append(ds)
+        verbose(2, "subject %i of %i loaded" % (index, nsubs))
 
 fds = vstack(ds_all) #stack datasets
 
+
 #classifier algorithm
 if clf_type is 'SVM':
-    clf = LinearCSVMC()
-elif clf_type is 'KNN':
-    clf = kNN(k=knn_k, voting='weighted')
+    clf = LinearCSVMC(tube_epsilon=0.01)
+elif clf_type is 'ridgeReg':
+    clf = mvpa2.clfs.ridge.RidgeReg()
+elif clf_type is 'gpr':
+    clf = mvpa2.clfs.gpr
+
+# #feature selection
+# fsel = SensitivityBasedFeatureSelection(
+#             OneWayAnova(),
+#             FractionTailSelector(0.05, mode='select', tail='upper'))
+# fclf = FeatureSelectionClassifier(clf, fsel)
+
 #cross-validation algorithm
 if cv_type is 'split_half':
     cv = CrossValidation(clf,
@@ -84,6 +104,8 @@ elif cv_type is 'nfld':
                          NFoldPartitioner(count=5,
                                          selection_strategy='random', attr='subject'),
                          errorfx=mean_match_accuracy)
+
+
 #run classification
 parc       = range(1,nparc+1)
 cv_results = [0 for x in parc]
@@ -103,23 +125,44 @@ sens_out = np.asarray(sens)
 np.save(os.path.join(mvpa_path,'cv_results',str(nsubs)+'subs_'+cv_type+'_CV_'+clf_type+'ftrWghts'),
         sens_out)
 
-#feature weights x 2bk>0bk beta map
+
+#feature weights x 2bk beta image
 dp = np.zeros([len(subs_test),1])
 for index, s in enumerate(subs_test):
     path = os.path.join(beta_path, s,
                                  'MNINonLinear', 'Results', 'tfMRI_'+task,
                                  'tfMRI_'+task+'_hp200_s2_level2.feat',
-                                 'GrayordinatesStats','cope11.feat','pe1.dtseries.nii')
+                                 'GrayordinatesStats','cope9.feat','pe1.dtseries.nii')
     beta_map  = nib.load(path)
     beta_map  = np.array(beta_map.dataobj)
     beta_map  = beta_map[0, 0, 0, 0, :, 0:]
     dp[index] = np.dot(sens_out,beta_map.transpose())
 
+
 #load behavioral data
-df    = pd.read_csv('HCP_behavioraldata.csv')
-subs  = [int(s) for s in subs_test] #convert str to int
-df2   = df.loc[df['Subject'].isin(subs_test)]
-bdata = df2.ListSort_AgeAdj
-bdata = bdata.reshape(30,1)
+subs    = [int(s) for s in subs_test] #convert str to int
+df2     = df.loc[df['Subject'].isin(subs_test)]
+acc_0bk = df2.WM_Task_0bk_Acc
+acc_2bk = df2.WM_Task_2bk_Acc
+acc_2bk = acc_2bk.reshape(len(subs_test),1)
+acc_0bk = acc_0bk.reshape(len(subs_test),1)
+
+#correlate behavior and predicted
+plt.scatter(acc_2bk,dp)
+corr = sp.stats.pearsonr(acc_2bk,dp)
+
+
+# #feature weights x 2bk>0bk beta map
+# dp = np.zeros([len(subs_test),1])
+# for index, s in enumerate(subs_test):
+#     path = os.path.join(beta_path, s,
+#                                  'MNINonLinear', 'Results', 'tfMRI_'+task,
+#                                  'tfMRI_'+task+'_hp200_s2_level2.feat',
+#                                  'GrayordinatesStats','cope11.feat','pe1.dtseries.nii')
+#     beta_map  = nib.load(path)
+#     beta_map  = np.array(beta_map.dataobj)
+#     beta_map  = beta_map[0, 0, 0, 0, :, 0:]
+#     dp[index] = np.dot(sens_out,beta_map.transpose())
+
 
 verbose(2, "total script computation time: %.1f minutes" % ((time.time() - script_start_time)/60))
