@@ -116,6 +116,9 @@ for index, s in enumerate(subs_test):
     beta_map  = beta_map[0, 0, 0, 0, :, 0:]
     dp[index] = np.dot(sens_out,beta_map.transpose())
 
+np.save(os.path.join(mvpa_path,'cv_results',str(nsubs)+'subs_'+cv_type+'_CV_'+clf_type+'dp'),
+        dp)
+
 #load behavioral data
 df    = pd.read_csv('HCP_behavioraldata.csv')
 subs  = [int(s) for s in subs_test] #convert str to int

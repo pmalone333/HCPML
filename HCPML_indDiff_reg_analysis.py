@@ -140,7 +140,8 @@ for index, s in enumerate(subs_test):
 
 
 np.save(os.path.join(mvpa_path,'cv_results',str(nsubs)+'subs_'+cv_type+'_CV_'+clf_type+'dp'),
-        sens_out)
+        dp)
+#np.load('/Volumes/maloneHD/Data/HCP_ML/WM/mvpa/2bkVs0bk/cv_results/700subs_nfld_CV_SVMclf_ftrWghts.npy')
 
 #load behavioral data
 subs    = [int(s) for s in subs_test] #convert str to int
