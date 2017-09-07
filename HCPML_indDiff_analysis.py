@@ -1,13 +1,10 @@
 from mvpa2.suite import *
-from joblib import Parallel, delayed
-from HCPML_plt import clfAccHist
 import os
 import platform
 import numpy as np
 import nibabel as nib
 import multiprocessing
-import runCV
-
+import pandas as pd
 
 #enable output to console
 verbose.level = 2
@@ -17,7 +14,7 @@ script_start_time = time.time()
 #define paths
 task      = 'WM' #motor, WM, gambling
 clf_name  = '2bkVs0bk' #lfvslh, multiclass (all 5 movements)
-if platform.node() == 'D-128-208-56-246.dhcp4.washington.edu':
+if platform.node() == 'D-69-91-163-224.dhcp4.washington.edu':
 #if platform.node() == 'Patricks-MacBook-Pro.local':
     data_path = os.path.join('/Volumes/maloneHD/Data/HCP_ML/', task)  # base directory (mac)
     beta_path = os.path.join('/Volumes/maloneHD/Data_noSync/HCP_ML/', task, 'betas/')  # beta images
@@ -40,17 +37,18 @@ pe_num   = ['9','10']
 #pe_num   = ['2','3','4','5','6'] #parameter estimate numbers corresponding to targets
 
 #define subjects and mask
-subs      = os.listdir(beta_path)
-subs      = subs[:nsubs]
-surf_mask = np.ones([1,59412]) #mask for cortical surface nodes, not subcortical/cerebellum volumetric voxels
-msk_path  = os.path.join(parc_path, 'Glasser_360.dtseries.nii')
-msk       = nib.load(msk_path)
-msk_data  = msk.get_data()
-msk_data  = msk_data[0, 0, 0, 0, 0, 0:]  #last dimension contains parcel data
+subs       = os.listdir(beta_path)
+subs_train = subs[:nsubs]
+subs_test  = subs[nsubs:nsubs+30]
+surf_mask  = np.ones([1,59412]) #mask for cortical surface nodes, not subcortical/cerebellum volumetric voxels
+msk_path   = os.path.join(parc_path, 'Glasser_360.dtseries.nii')
+msk        = nib.load(msk_path)
+msk_data   = msk.get_data()
+msk_data   = msk_data[0, 0, 0, 0, 0, 0:]  #last dimension contains parcel data
 
 #load beta imgs
 ds_all = []
-for index, s in enumerate(subs):
+for index, s in enumerate(subs_train):
     tds_beta_path = os.path.join(beta_path, s,
                                  'MNINonLinear', 'Results', 'tfMRI_'+task,
                                  'tfMRI_'+task+'_hp200_s2_level2.feat',
@@ -60,10 +58,11 @@ for index, s in enumerate(subs):
         pe_paths.append(os.path.join(tds_beta_path,
                                      'cope'+p+'.feat','pe1.dtseries.nii'))
 
-    ds = fmri_dataset(pe_paths,targets=targets,mask=surf_mask)
+    #ds = fmri_dataset(pe_paths,targets=targets,mask=surf_mask)
+    ds = fmri_dataset(pe_paths, targets=targets)
 
     ds.sa['subject'] = np.repeat(index, len(ds))
-    ds.fa['parcel']  = msk_data
+    #ds.fa['parcel']  = msk_data
     ds_all.append(ds)
     verbose(2, "subject %i of %i loaded" % (index, nsubs))
 
@@ -108,7 +107,23 @@ sens_out = np.asarray(sens)
 np.save(os.path.join(mvpa_path,'cv_results',str(nsubs)+'subs_'+cv_type+'_CV_'+clf_type+'ftrWghts'),
         sens_out)
 
-#load behavioral data
+#feature weights x 2bk>0bk beta map
+dp = np.zeros([len(subs_test),1])
+for index, s in enumerate(subs_test):
+    path = os.path.join(beta_path, s,
+                                 'MNINonLinear', 'Results', 'tfMRI_'+task,
+                                 'tfMRI_'+task+'_hp200_s2_level2.feat',
+                                 'GrayordinatesStats','cope11.feat','pe1.dtseries.nii')
+    beta_map  = nib.load(path)
+    beta_map  = np.array(beta_map.dataobj)
+    beta_map  = beta_map[0, 0, 0, 0, :, 0:]
+    dp[index] = np.dot(sens_out,beta_map.transpose())
 
+#load behavioral data
+df    = pd.read_csv('HCP_behavioraldata.csv')
+subs  = [int(s) for s in subs_test] #convert str to int
+df2   = df.loc[df['Subject'].isin(subs_test)]
+bdata = df2.ListSort_AgeAdj
+bdata = bdata.reshape(30,1)
 
 verbose(2, "total script computation time: %.1f minutes" % ((time.time() - script_start_time)/60))
