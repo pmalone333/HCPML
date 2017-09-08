@@ -14,7 +14,7 @@ script_start_time = time.time()
 
 #define paths
 task      = 'WM' #motor, WM, gambling
-clf_name  = '2bkVs0bk' #lfvslh, multiclass (all 5 movements)
+clf_name  = 'faceVsPlace' #lfvslh, multiclass (all 5 movements)
 
 data_path = os.path.join('/Volumes/maloneHD/Data/HCP_ML/', task)  # base directory (mac)
 beta_path = os.path.join('/Volumes/maloneHD/Data_noSync/HCP_ML/', task, 'betas/')  # beta images
@@ -28,10 +28,10 @@ nparc    = 360 #number of parcels/ROIs
 clf_type = 'SVM' #KNN, SVM
 knn_k    = round(np.sqrt(nsubs)) #k-nearest-neighbor parameter
 cv_type  = 'nfld' #split_half, LOSO (leave-one-subject-out), nfld (n-fold)
-targets  = ['2BK','0BK']
-pe_num   = ['9','10']
-#targets  = ['lf','lh','rf','rh','t'] #targets to be classified
-#pe_num   = ['2','3','4','5','6'] #parameter estimate numbers corresponding to targets
+targets  = ['face','place']
+pe_num   = ['16','17']
+# targets  = ['lf','lh'] #targets to be classified
+# pe_num   = ['2','3'] #parameter estimate numbers corresponding to targets
 
 #define subjects and mask
 subs       = os.listdir(beta_path)
@@ -67,8 +67,9 @@ fds = vstack(ds_all) #stack datasets
 
 #classifier algorithm
 if clf_type is 'SVM':
+    clf = LinearCSVMC()
+elif clf_type is 'SVM-rbf':
     clf = RbfCSVMC()
-    #clf = LinearCSVMC()
 elif clf_type is 'KNN':
     clf = kNN(k=knn_k, voting='weighted')
 #cross-validation algorithm
@@ -102,7 +103,7 @@ sens    = sensana(fds)
 
 #convert feature weights to numpy array and save
 sens_out = np.asarray(sens)
-np.save(os.path.join(mvpa_path,'cv_results',str(nsubs)+'subs_'+cv_type+'_CV_'+clf_type+'ftrWghts'),
+np.save(os.path.join(mvpa_path,'cv_results',str(nsubs)+'subs_'+cv_type+'_CV_'+clf_type+'ftrWghts_faceVsPlace'),
         sens_out)
 
 #feature weights x 2bk>0bk beta map
@@ -111,13 +112,13 @@ for index, s in enumerate(subs_test):
     path = os.path.join(beta_path, s,
                                  'MNINonLinear', 'Results', 'tfMRI_'+task,
                                  'tfMRI_'+task+'_hp200_s2_level2.feat',
-                                 'GrayordinatesStats','cope11.feat','pe1.dtseries.nii')
+                                 'GrayordinatesStats','cope2.feat','pe1.dtseries.nii')
     beta_map  = nib.load(path)
     beta_map  = np.array(beta_map.dataobj)
     beta_map  = beta_map[0, 0, 0, 0, :, 0:]
     dp[index] = np.dot(sens_out,beta_map.transpose())
 
-np.save(os.path.join(mvpa_path,'cv_results',str(nsubs)+'subs_'+cv_type+'_CV_'+clf_type+'dp'),
+np.save(os.path.join(mvpa_path,'cv_results',str(nsubs)+'subs_'+cv_type+'_CV_'+clf_type+'dp_faceVsPlace'),
         dp)
 
 #load behavioral data
@@ -125,6 +126,7 @@ df    = pd.read_csv('HCP_behavioraldata.csv')
 subs  = [int(s) for s in subs_test] #convert str to int
 df2   = df.loc[df['Subject'].isin(subs_test)]
 bdata = df2.ListSort_AgeAdj
+#bdata = df2.Dexterity_AgeAdj
 bdata = bdata.reshape(300,1)
 
 verbose(2, "total script computation time: %.1f minutes" % ((time.time() - script_start_time)/60))
