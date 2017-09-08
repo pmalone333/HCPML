@@ -13,8 +13,8 @@ verbose.level = 2
 script_start_time = time.time()
 
 #define paths
-task      = 'motor' #motor, WM, gambling
-clf_name  = 'lfvslh' #lfvslh, multiclass (all 5 movements)
+task      = 'WM' #motor, WM, gambling
+clf_name  = 'faceVsPlace' #lfvslh, multiclass (all 5 movements)
 
 data_path = os.path.join('/Volumes/maloneHD/Data/HCP_ML/', task)  # base directory (mac)
 beta_path = os.path.join('/Volumes/maloneHD/Data_noSync/HCP_ML/', task, 'betas/')  # beta images
@@ -28,10 +28,10 @@ nparc    = 360 #number of parcels/ROIs
 clf_type = 'SVM' #KNN, SVM
 knn_k    = round(np.sqrt(nsubs)) #k-nearest-neighbor parameter
 cv_type  = 'nfld' #split_half, LOSO (leave-one-subject-out), nfld (n-fold)
-# targets  = ['2BK','0BK']
-# pe_num   = ['9','10']
-targets  = ['lf','lh'] #targets to be classified
-pe_num   = ['2','3'] #parameter estimate numbers corresponding to targets
+targets  = ['face','place']
+pe_num   = ['16','17']
+# targets  = ['lf','lh'] #targets to be classified
+# pe_num   = ['2','3'] #parameter estimate numbers corresponding to targets
 
 #define subjects and mask
 subs       = os.listdir(beta_path)
@@ -103,7 +103,7 @@ sens    = sensana(fds)
 
 #convert feature weights to numpy array and save
 sens_out = np.asarray(sens)
-np.save(os.path.join(mvpa_path,'cv_results',str(nsubs)+'subs_'+cv_type+'_CV_'+clf_type+'ftrWghts'),
+np.save(os.path.join(mvpa_path,'cv_results',str(nsubs)+'subs_'+cv_type+'_CV_'+clf_type+'ftrWghts_faceVsPlace'),
         sens_out)
 
 #feature weights x 2bk>0bk beta map
@@ -118,15 +118,15 @@ for index, s in enumerate(subs_test):
     beta_map  = beta_map[0, 0, 0, 0, :, 0:]
     dp[index] = np.dot(sens_out,beta_map.transpose())
 
-np.save(os.path.join(mvpa_path,'cv_results',str(nsubs)+'subs_'+cv_type+'_CV_'+clf_type+'dp'),
+np.save(os.path.join(mvpa_path,'cv_results',str(nsubs)+'subs_'+cv_type+'_CV_'+clf_type+'dp_faceVsPlace'),
         dp)
 
 #load behavioral data
 df    = pd.read_csv('HCP_behavioraldata.csv')
 subs  = [int(s) for s in subs_test] #convert str to int
 df2   = df.loc[df['Subject'].isin(subs_test)]
-#bdata = df2.ListSort_AgeAdj
-bdata = df2.Dexterity_AgeAdj
-bdata = bdata.reshape(253,1)
+bdata = df2.ListSort_AgeAdj
+#bdata = df2.Dexterity_AgeAdj
+bdata = bdata.reshape(300,1)
 
 verbose(2, "total script computation time: %.1f minutes" % ((time.time() - script_start_time)/60))
