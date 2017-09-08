@@ -13,8 +13,8 @@ verbose.level = 2
 script_start_time = time.time()
 
 #define paths
-task      = 'WM' #motor, WM, gambling
-clf_name  = '2bkVs0bk' #lfvslh, multiclass (all 5 movements)
+task      = 'motor' #motor, WM, gambling
+clf_name  = 'lfvslh' #lfvslh, multiclass (all 5 movements)
 
 data_path = os.path.join('/Volumes/maloneHD/Data/HCP_ML/', task)  # base directory (mac)
 beta_path = os.path.join('/Volumes/maloneHD/Data_noSync/HCP_ML/', task, 'betas/')  # beta images
@@ -28,10 +28,10 @@ nparc    = 360 #number of parcels/ROIs
 clf_type = 'SVM' #KNN, SVM
 knn_k    = round(np.sqrt(nsubs)) #k-nearest-neighbor parameter
 cv_type  = 'nfld' #split_half, LOSO (leave-one-subject-out), nfld (n-fold)
-targets  = ['2BK','0BK']
-pe_num   = ['9','10']
-#targets  = ['lf','lh','rf','rh','t'] #targets to be classified
-#pe_num   = ['2','3','4','5','6'] #parameter estimate numbers corresponding to targets
+# targets  = ['2BK','0BK']
+# pe_num   = ['9','10']
+targets  = ['lf','lh'] #targets to be classified
+pe_num   = ['2','3'] #parameter estimate numbers corresponding to targets
 
 #define subjects and mask
 subs       = os.listdir(beta_path)
@@ -67,8 +67,9 @@ fds = vstack(ds_all) #stack datasets
 
 #classifier algorithm
 if clf_type is 'SVM':
+    clf = LinearCSVMC()
+elif clf_type is 'SVM-rbf':
     clf = RbfCSVMC()
-    #clf = LinearCSVMC()
 elif clf_type is 'KNN':
     clf = kNN(k=knn_k, voting='weighted')
 #cross-validation algorithm
@@ -111,7 +112,7 @@ for index, s in enumerate(subs_test):
     path = os.path.join(beta_path, s,
                                  'MNINonLinear', 'Results', 'tfMRI_'+task,
                                  'tfMRI_'+task+'_hp200_s2_level2.feat',
-                                 'GrayordinatesStats','cope11.feat','pe1.dtseries.nii')
+                                 'GrayordinatesStats','cope2.feat','pe1.dtseries.nii')
     beta_map  = nib.load(path)
     beta_map  = np.array(beta_map.dataobj)
     beta_map  = beta_map[0, 0, 0, 0, :, 0:]
@@ -124,7 +125,8 @@ np.save(os.path.join(mvpa_path,'cv_results',str(nsubs)+'subs_'+cv_type+'_CV_'+cl
 df    = pd.read_csv('HCP_behavioraldata.csv')
 subs  = [int(s) for s in subs_test] #convert str to int
 df2   = df.loc[df['Subject'].isin(subs_test)]
-bdata = df2.ListSort_AgeAdj
-bdata = bdata.reshape(300,1)
+#bdata = df2.ListSort_AgeAdj
+bdata = df2.Dexterity_AgeAdj
+bdata = bdata.reshape(253,1)
 
 verbose(2, "total script computation time: %.1f minutes" % ((time.time() - script_start_time)/60))
