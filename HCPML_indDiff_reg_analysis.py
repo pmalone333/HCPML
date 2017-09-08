@@ -1,4 +1,6 @@
 from mvpa2.suite import *
+from mvpa2.clfs.ridge import RidgeReg
+from mvpa2.clfs.gpr import GPR
 import os
 import numpy as np
 import nibabel as nib
@@ -78,10 +80,12 @@ fds = vstack(ds_all) #stack datasets
 #classifier algorithm
 if clf_type is 'SVM':
     clf = LinearCSVMC(tube_epsilon=0.01)
+elif clf_type is 'SVM-rbf':
+    clf = RbfCSVMC(tube_epsilon=0.01)
 elif clf_type is 'ridgeReg':
-    clf = mvpa2.clfs.ridge.RidgeReg()
+    clf = RidgeReg()
 elif clf_type is 'gpr':
-    clf = mvpa2.clfs.gpr
+    clf = GPR()
 
 # #feature selection
 # fsel = SensitivityBasedFeatureSelection(
