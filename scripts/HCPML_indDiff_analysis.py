@@ -17,13 +17,13 @@ task      = 'WM' #motor, WM, gambling
 clf_name  = 'faceVsPlace' #lfvslh, multiclass (all 5 movements)
 
 data_path = os.path.join('/Volumes/maloneHD/Data/HCP_ML/', task)  # base directory (mac)
-beta_path = os.path.join('/Volumes/maloneHD/Data_noSync/HCP_ML/', task, 'betas/')  # beta images
+beta_path = os.path.join('/Volumes/maloneHD/Data_noSync/HCP_ML/', task)  # beta images
 
 mvpa_path = os.path.join(data_path,'mvpa',clf_name)
 parc_path = os.path.join(data_path,'parc') #parcellations
 
 #analysis parameters
-nsubs    = 700 #number of subjects
+nsubs    = 10 #number of subjects
 nparc    = 360 #number of parcels/ROIs
 clf_type = 'SVM' #KNN, SVM
 knn_k    = round(np.sqrt(nsubs)) #k-nearest-neighbor parameter
@@ -36,7 +36,7 @@ pe_num   = ['16','17']
 #define subjects and mask
 subs       = os.listdir(beta_path)
 subs_train = subs[:nsubs]
-subs_test  = subs[nsubs:nsubs+300]
+subs_test  = subs[nsubs:nsubs+10]
 surf_mask  = np.ones([1,59412]) #mask for cortical surface nodes, not subcortical/cerebellum volumetric voxels
 msk_path   = os.path.join(parc_path, 'Glasser_360.dtseries.nii')
 msk        = nib.load(msk_path)
